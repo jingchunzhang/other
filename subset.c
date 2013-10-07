@@ -1,3 +1,7 @@
+/*
+ *http://discuss.leetcode.com/questions/253/subsets?sort=votes&page=1
+ */
+
 #include <stdio.h>
 #include <math.h>
 
