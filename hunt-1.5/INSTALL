@@ -1,0 +1,16 @@
+
+Make sure you have:
+glibc >= 2.0.7 with linuxthreads
+
+just type "make" and you get hunt binary
+
+You can download binary and static linked binary code also.
+
+libc5 + linuxhteads-7.X isn't tested but you can compile it
+and test it if you edit Makefile and uncomment 
+#CFLAGS+=-D_WITH_LINUX_KERNEL_HDR
+
+
+
+enjoy it
+

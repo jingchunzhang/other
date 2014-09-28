@@ -1,0 +1,5 @@
+- command line options and configuration from config file
+
+- handling IP fragments (defragmentation before TCP processing)
+- handling out of order TCP segments
+- better TCP state machine (with better checking of seq. numbers)

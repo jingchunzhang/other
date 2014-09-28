@@ -1,0 +1,231 @@
+/*
+ * hunt
+ *
+ * Copyright (C) 1999 kra
+ * Designed and implemented by kra <kra@gncz.cz>
+ *
+ */
+
+DISCLAIMER
+----------
+Authors are not responsible of any damages this software can cause.
+
+
+NEW DIRECTION IN THE MAN IN THE MIDDLE ATTACK
+---------------------------------------------
+The man in the middle attack is well known attack where you receive/sniff
+packets from network, modify them and insert them back to the network.
+In fact the routers/gateways do exactly this but they modify only some
+IP headers in the IP packets so they do not reassemble data stream.
+Furthermore sniffer or host running hunt does not usually act as a router.
+Through ARP spoofing we can manage that instead to the router or ordinary
+destination host the originator of connection will send traffic to as. But
+there is another problem. How to deal with TCP stream that is in IP packets. 
+We can try to reassemble it in our user code as most more sophisticated 
+sniffers do but this task is very costly (in terms of programming work) and 
+to handle full TCP state machine with all its options, features, etc. is not 
+simply easy task. We would prefer that this job will do someone else, let 
+say Linux kernel. And this is one of the reasons why I like Linux very much. 
+We will use the transproxy capability of Linux to reassemble data 
+stream from IP packets and the user code will handle only application data 
+as does destination host. Even  though the approach is not fully transparent 
+currently for source nor destination host and is not able to handle 
+connections that are in the progress already but the concept is here and 
+with some hooks it would be probably possible to extend it to fully 
+transparent solution.
+
+
+USED TERMINOLOGY
+----------------
+I use the term "src" (source) host for the host that originated TCP 
+connection and "dst" (destination) host for the host to which "src" host 
+tries to connect. (It might be sometimes confusing with ARP spoofing 
+terminology used in ARP spoof attack - see README). Of course data
+can flow from destination to source as well.
+
+
+ARP SPOOFING AND REDIRECTING THE TRAFFIC
+----------------------------------------
+One of the method used to redirect traffic on ethernet to hunt program is arp
+spoofing. We have to manage to persuade the host that the ethernet hardware
+address (MAC) of router or destination host is something different and then 
+listen for packets with that fake MAC from source host. The host will think 
+the destination is simply on different MAC so we will have the chance to sniff
+that packets. This approach has two nice features. One, the destination host
+will not receive this traffic unless it is in promiscuous mode (as usually 
+isn't), second, we will see the traffic even when we are on completely 
+switched port. This concept is already well known from previous versions of
+hunt so it is nothing new to as but transproxy support relies on it.
+
+
+RECEIVING/SENDING DATA FROM/TO SOURCE HOST
+------------------------------------------
+Now how we can receive packets from src host? We can do that by simply picking
+the traffic from interface in promiscuous mode (when we are using fake mac ARP 
+spoofing) and try to reassemble it. But there is more sophisticated solution 
+(it has some drawbacks though as nothing is at zero cost). If we will use our 
+interface mac address as the fake mac address which we will claim is a mac 
+address of someone else and convince remote host that our mac address is 
+actually mac address of the destination host then the src host will send the 
+traffic with the IP address of destination but with our interface MAC address.
+In this case we can setup transproxy redirection in kernel so such a traffic 
+that come to our mac address with destination (not our) IP address will be 
+picked up by kernel and redirected to another TCP port. That means the kernel
+will do complete reassembly and TCP state machine and we then can read that
+data form the socket to which the traffic was redirected. The transproxy mode
+has one nice capability. When we write to that socket back some data then the
+IP packets carrying data will have true destination IP address and not the
+address of our host. So the source machine can receive our packets with
+correct source/destination IP numbers. The connection will really look like
+from source to destination (and not from source to our host). Recall that we
+are using our interface MAC address because if we used some fake one then
+the Linux kernel would not pick up packets from the network for transproxy
+delivery.
+
+It would be a nice feature if the Linux interface in promiscuous mode could
+pick up and deliver the packets of configurable (not only host interface) MAC
+address to the TCP/IP stack for transproxy redirection.
+
+
+RECEIVING/SENDING DATA FROM/TO DESTINATION HOST
+-----------------------------------------------
+So we have the traffic from one end (from the host who originated the 
+connection). Unfortunately the transparency for destination side is not ready 
+yet. Currently the program that runs on our host and receives redirected data
+from source has to make some ordinary connections - probably to the
+destination host, so the connection will look like from our host to dst host. 
+(We would prefer of course that it will look like from source to destination
+but it is not done currently).
+
+
+DEVELOPING TRANSPROXY PROGRAMS
+------------------------------
+The major feature of using transproxy support in the kernel is the fact
+that we do not have to reassemble TCP stream or handle anything behind TCP.
+The transproxy user programs that do all the magic with data are ordinary
+programs that use socket interface. We just read/write from/to sockets.
+There are plenty of books out there to describe how to use sockets. Assigning
+proper IP addresses, port numbers etc does Linux kernel. That is nice, isn't
+it.
+
+
+NEW OPTIONS IN HUNT
+-------------------
+The changes to support all this was done mainly in arp spoof daemon. It now
+supports ARP spoof of IP ranges and even hosts that are currently down. So
+immediately after the host boots and tries to communicate with some 
+destination the hunt automaticly spoof that host. Host that is down (or
+disconnected from the network) does not prevent as doing ARP spoof on it.
+In the case that host is down the ARP spoof will be simply deferred to the
+time host boots and tries to communicate - hunt will inform as that it is 
+not able to find MAC address of that host and let as proceed further. But
+we do not need these new options if we are spoofing just one host.
+
+New options in ARP spoof daemon menu:
+L) List ranges of IP addresses that was inserted through I)
+I) Insert IP range of hosts to which you want to insert some fake
+   MAC address of a host.
+R) Remove IP range spoof of hosts
+T) Test IP range spoof of hosts
+
+These options can be used with normal connection sniffing and hijacking of 
+course. Use rather l,i,r,t options (lower case) when you are spoofing just
+single host.
+
+
+TRANSPROXY SUPPORT PROGRAMS
+---------------------------
+There are new directories and programs.
+
+tpsetup/transproxy is a program to start transproxy mode in Linux kernel.
+Make sure you have compiled the kernel with transproxy support (you have to
+enable IP_FIREWALL option and ALWAYS_DEFRAGMENT and IP_TRANSPARENT_PROXY
+options when you compile the kernel) and have ipchains installed. The 
+knowledge how plain transproxy works (from the user point of view) is of
+course big plus for you and you will then be able to understand what is going
+on and what I am actually describing. The script contains two variables that
+control on which port it listens and to which port the traffic will be
+redirected.
+
+The DST_PORT is the port to which ordinary clients (source hosts) tries to 
+connect.
+The DST_PORT_PROXY is the port to which the data are redirected and on which 
+listens transproxy user program that does all the black magic with data stream.
+
+tpserv/tpserv is a program that implements the proxy, the attack or whatever 
+you want to call it. It just listens on DST_PORT_PROXY that is configurable 
+with -p option and receives the reassembled data stream from kernel. Currently 
+this program supports a mode in which echoes everything back to the src host 
+or the mode in that it connects to destination to which the client wanted to 
+connect and relay everything from client to that destination and everything 
+from destination to the client. (See the limitations on how the connection 
+will look like on destination host). It is possible to insert some code to
+this program to modify data from/to source/destination (but this you will have
+to do yourself)
+
+The tpserv program supports these options:
+-v 	verbose		  (prints connections)
+-vv	even more verbose (prints connections and received/send packets)
+-D	daemon mode
+-c	connection mode (default is echo mode)
+
+
+HOW IT WORKS TOGETHER
+---------------------
+Here is small example how to use it. Of course as always with hunt, think
+before and then run or modify it.
+
+1. At the beginning run tpsetup/transproxy program.
+   The default destination port is 7000 and redirecting port is 7044
+   
+2. Run tpserv/tpserv -v    (or -vv)
+
+3. Run hunt and enter arp spoof daemon menu. Do not start the daemon unless
+   you modify the tpsetup/transproxy script
+   "i" insert the single arp spoof in this order:
+   	- IP address (name) of your gateway
+	      or IP address (name) of destination host if the host is in the
+	      same IP subnet as source host
+   	- as fake mac address enter 'my' or enter your interface MAC address
+	- enter IP address (name) of source host (client) from which you want
+	  to receive data - connections.
+	- optionally enter refresh interval
+   "t" test if the spoof was successful
+   
+4. from the source host try to run telnet 1.1.1.1 7000
+   (or telnet destination_name 7000) and type some chars. The chars should be
+   echoed back by tpserv program.
+   
+You can then play little bit with DST_PORT setting in setup/transproxy script
+and/or -c option of tpserv program or change tpserv to modify data going
+from/to source/destination.
+
+
+FEATURES
+--------
+- the connection from source looks like from source to destination
+- the Linux kernel does all the TCP/IP processing
+- the user code does not have to deal with raw TCP stream and implements
+  only user data processing/modification
+
+
+LIMITATIONS
+-----------
+- we have to use our host MAC address as fake spoofing MAC address,
+  the traffic from source to destination will have this MAC address
+- traffic to the destination is originated form our host so it really looks
+  like from our host to destination if used.
+- it is possible to start only from newly created connections, it is not
+  possible to handle ongoing connections
+
+Be aware of limitations. As I said it does not work fully transparent so
+maybe you will be little bit disappointed that the destination host does not
+see the original client IP address. Maybe this limitation will be removed
+in the future but I do not promise anything ;-)
+
+
+BUG FIXES, SUGGESTIONS
+----------------------
+Please send bug descriptions, patches, suggestions, or successful stories to 
+kra@gncz.cz
+

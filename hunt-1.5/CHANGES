@@ -1,0 +1,105 @@
+-------- Hunt-1.5 released --------------
+
+30/5	 printing of terminal control chars is configurable through options
+	 menu in order to watch raw/binary data connections
+	 
+26/5	 check sum of TCP/IP packets has been fixed. This bug caused 
+	 correct packets to be dropped by hunt
+
+26/5	 Packet relaying for routers in arp relayer fixed. Thanks
+	 to Gabriel Musat for pointing the bug.
+	 
+16/2/2000 initialize pointer to NULL in hash.c:hash_iter_get
+	  thanks to Kevin M. Ryan
+
+27/10    watch calls tty_tput_reset to reset terminal (linux terminal
+	 only). print_data_packet prints hex numbers for unprintable
+	 chars
+
+-------- Hunt-1.4 released --------------
+
+	 Please update your bookmark to http://www.gncz.cz/kra/index.html
+	 and ftp://ftp.gncz.cz/pub/linux/hunt/
+
+1/10     README.tp done
+
+26/9	 Starting work on README.tp
+
+12/8	 eth tap relay - transproxy support without my eth mac spoofing
+	 - experimental
+	 
+5/7	 check for to long tot_len when the packet does not set that it is
+	 a fragment - thanks to Martin Lucina
+	 
+3/6-18/6 support for spoofing range of IP addresses
+	 relaying packets in arp-relayer that are sent from/to routers
+	 support for arp-spoof of hosts that are currently down
+	 relayer database for skipping specified packets
+	 tpserv/tpserv.c transproxy testing program
+	 tpsetup/transproxy script for setting transproxy support mode
+	 
+31/5-4/6 ability to modify packets in arp-relayer daemon
+	 I have used hunt for discovering bug in tcp protocol stack on
+	 one embedded system and for watching traffic between these systems
+	 and unixes on switched segments - thanks hunt - I do not have to move
+	 from my chair.
+	 
+26/5	 man page by Jon Marler
+
+23/5	 ARP mode promisc detection
+
+21/4     test for EUID only in main.c by Squeak
+
+-------- Hunt-1.3 released --------------
+
+2/4      Sendmsg and ENOBUFS in net.c
+
+31/3	 Locking bug in ARP relayer causing ARP relayer to lookup fixed 
+         thanks to Greg Ginting
+	 
+	 Locking bug (as was shown in ARP relayer) in sniffer fixed
+
+21/3	 Line mode in hijacking - useful when hijacking other connections than
+         telnet or rlogin
+	 synchhijack fixed for read/write==0
+
+-------- Hunt-1.2 released --------------
+
+15/2	 fix in timer.c, single arp spoof testing on switch - fixes
+
+11/2	 rlogin policy added as default
+	 suggest mac base in options
+
+7/2	 timerjob for ARP reply when it isn't received in switched
+	 environment after ARP request
+	 README update
+	 
+6/2	 new connection indicator in prompt
+
+25/1 - 3/2 Lots of debugging and fixes for switched environment
+	   thanks for testing environment to Jirka Vyhnanek and Petr Houzvik
+	   timejob addition
+	   some new items in option menu
+	   
+18/1/99  dropping IP fragments as they are not handled by hunt. Hunt
+	 doesn't support defragmentation yet.
+	 dropping some malformed IP packets
+	 verbose option in menu and status bar with verbose on
+
+7/1/99   MAC address learning from ARP request fixed
+         some typos
+	 
+--------- Hunt-1.1 released -------------
+
+3/12/98  Compilation with Linux2.1.X
+	 check of received packet checksums
+
+2/12/98	 Added promiscuous mode detection to host up menu 
+         through ICMP echo request/reply suggested
+	 by R. Engur Pisirici <engur@havelsan.com.tr>
+	 	 (more sophisticated detection is pending)
+		 
+	 corrected serious bug in list.c (__list_remove)
+	 some fixes
+
+--------- Hunt-1.0 -------------

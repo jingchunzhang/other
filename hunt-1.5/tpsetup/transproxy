@@ -1,0 +1,103 @@
+#!/bin/sh
+###########################################################################
+#
+#
+#	This is free software. You can redistribute it and/or modify under
+#	the terms of the GNU General Public License version 2.
+#
+# 	Copyright (C) 1999 by kra
+#
+###########################################################################
+#
+#
+# First Generation Transproxy support
+#
+# the MAC address of the gateway on the client have to be ARP spoofed
+# to MAC address of host running hunt. Then the transproxy in the
+# kernel can pick up the packets sent by client as if they will be
+# sent to the gateway
+#
+
+#
+# which port to redirect
+#
+DST_PORT=7000
+#DST_PORT=80
+
+#
+# port with transproxy module
+#
+DST_PORT_PROXY=7044
+
+#
+# forward by kernel
+#
+# when is used kernel forwarding do not start ARP relayer daemon,
+# the kernel will forward such a pakcets itself and thous destined
+# to DST_PORT will redirect to DST_PORT_PROXY
+#
+# when the kernel forwarding is not used start ARP relayer daemon
+# to relay packets and to relayer database enter not to forward 
+# traffic which is aimed for transproxy
+KERNEL_FORWARD=1
+
+##################################################################
+
+#
+# turn forwarding on - needed for kernel transproxy to work
+#
+echo 1 >/proc/sys/net/ipv4/ip_forward
+
+#
+# set the default policy for the chains to accept
+#
+
+
+#
+# flush the chains
+#
+ipchains -F input
+ipchains -F forward
+ipchains -F output
+
+#
+# set transproxy from DST_PORT to DST_PORT_PROXY
+#
+ipchains -A input -p TCP -s 0.0.0.0/0 -d 0.0.0.0/0 $DST_PORT -j REDIRECT $DST_PORT_PROXY
+
+# ipfwadm untested
+#ipfwadm -I -a accept -P tcp -S 0.0.0.0/0 -D 0.0.0.0/0 $DST_PORT -r $DST_PORT_PROXY
+
+#
+# turn off ip forwarding for other traffic than transproxy
+# - otherwise every packet forwarded by kernel will trigger sending
+# the ICMP redirect message to tell the host that he should use
+# real gateway
+# 
+# anyway it does not matter because the ARP address of gateway is ARP spoofed
+# on client so the client will not change anything.
+#
+# there are two approaches:
+# 1) forward packets with hunt relayer daemon - then start the relayer daemon
+#    and deny forwarding in the kernel
+# 2) let the kernel forward them but it will also send ICMP redirect,
+#    Linux kernel 2.2 allows as to block these redirects.
+#
+
+#
+# forwarded by kernel ?
+#
+if [ "$KERNEL_FORWARD" = 1 ]; then
+	#
+	# block ICMP redirects, that are send by default when we use kernel forwarding
+	#
+	ipchains -A output  -p icmp -s 0.0.0.0/0 redirect -d 0.0.0.0/0 -j DENY
+	
+	ipchains -A forward -s 0.0.0.0/0 -d 0.0.0.0/0 -j ACCEPT
+else
+	ipchains -A forward -s 0.0.0.0/0 -d 0.0.0.0/0 -j DENY
+fi
+
+# ipfwadm untested 
+#ipfwadm -F -a deny -S 0.0.0.0/0 -D 0.0.0.0/0
+
